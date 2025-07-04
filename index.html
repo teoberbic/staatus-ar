@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Staatus Bear AR</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <script type="module">
+    import * as THREE from "https://unpkg.com/three@0.165.0/build/three.module.js";
+    import { ARButton } from "https://unpkg.com/three@0.165.0/examples/jsm/webxr/ARButton.js";
+    import { GLTFLoader } from "https://unpkg.com/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
+
+    let camera, scene, renderer;
+
+    init();
+    function init() {
+      scene   = new THREE.Scene();
+      camera  = new THREE.PerspectiveCamera();
+
+      renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.xr.enabled = true;
+      document.body.appendChild(renderer.domElement);
+
+      // -- create an AR button with *no extra splash* (WebXR native UI only)
+      document.body.appendChild(ARButton.createButton(renderer,{requiredFeatures:[]}));
+
+      // load the bear
+      const loader = new GLTFLoader();
+      loader.load("bear_staatus_AR.glb", gltf => {
+        const bear = gltf.scene;
+        bear.scale.set(1,1,1);            // already 1 m tall
+        bear.rotation.y = Math.PI;         // face the camera
+
+        renderer.xr.addEventListener("sessionstart", () => {
+          // place 1 m straight ahead of the camera as soon as session begins
+          const cam = renderer.xr.getCamera(camera);
+          bear.position.set(0, -0.2, -1); // x,y,z relative to camera
+          cam.add(bear);                  // attach so no tap is needed
+        });
+
+        animate();
+      });
+    }
+
+    function animate(){ renderer.setAnimationLoop(()=>renderer.render(scene,camera)); }
+  </script>
+  <style>body{margin:0;overflow:hidden;}</style>
+</head>
+<body></body>
+</html>
