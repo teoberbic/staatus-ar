@@ -4,48 +4,85 @@
   <meta charset="utf-8">
   <title>Staatus Bear AR</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <script type="module">
-    import * as THREE from "https://unpkg.com/three@0.165.0/build/three.module.js";
-    import { ARButton } from "https://unpkg.com/three@0.165.0/examples/jsm/webxr/ARButton.js";
-    import { GLTFLoader } from "https://unpkg.com/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
 
-    let camera, scene, renderer;
+  <!-- Fallback component for iOS / non-XR browsers -->
+  <script type="module"
+          src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
-    init();
-    function init() {
-      scene   = new THREE.Scene();
-      camera  = new THREE.PerspectiveCamera();
-
-      renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.xr.enabled = true;
-      document.body.appendChild(renderer.domElement);
-
-      // -- create an AR button with *no extra splash* (WebXR native UI only)
-      document.body.appendChild(ARButton.createButton(renderer,{requiredFeatures:[]}));
-
-      // load the bear
-      const loader = new GLTFLoader();
-      loader.load("bear_staatus_AR.glb", gltf => {
-        const bear = gltf.scene;
-        bear.scale.set(1,1,1);            // already 1 m tall
-        bear.rotation.y = Math.PI;         // face the camera
-
-        renderer.xr.addEventListener("sessionstart", () => {
-          // place 1 m straight ahead of the camera as soon as session begins
-          const cam = renderer.xr.getCamera(camera);
-          bear.position.set(0, -0.2, -1); // x,y,z relative to camera
-          cam.add(bear);                  // attach so no tap is needed
-        });
-
-        animate();
-      });
-    }
-
-    function animate(){ renderer.setAnimationLoop(()=>renderer.render(scene,camera)); }
-  </script>
-  <style>body{margin:0;overflow:hidden;}</style>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#000}
+    #mv-wrapper{display:none;height:100%}
+    model-viewer{width:100%;height:100%}
+    .ar-button{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+               padding:12px 24px;font:18px sans-serif;border-radius:8px;
+               background:#1976d2;color:#fff;border:none}
+  </style>
 </head>
-<body></body>
+
+<body>
+<!-- ---------- iOS / Desktop fallback ---------- -->
+<div id="mv-wrapper">
+  <model-viewer id="mv"
+                src="1968_Volkswagen_Beetle.glb"
+                ios-src="1968_Volkswagen_Beetle.usdz"
+                ar ar-modes="scene-viewer quick-look webxr"
+                autoplay camera-controls="false" disable-tap
+                style="background:transparent;">
+    <button slot="ar-button" class="ar-button">View in AR</button>
+  </model-viewer>
+</div>
+
+<!-- ---------- Android Web-XR path ---------- -->
+<script type="module">
+  // Test if the browser supports Web-XR immersive-AR
+  if (navigator.xr && await navigator.xr.isSessionSupported('immersive-ar')) {
+
+    // dynamically import Three.js modules only when needed
+    const [{ PerspectiveCamera, Scene, WebGLRenderer, Color },
+           { ARButton }]   = await Promise.all([
+             import('https://unpkg.com/three@0.165.0/build/three.module.js'),
+             import('https://unpkg.com/three@0.165.0/examples/jsm/webxr/ARButton.js')
+           ]);
+    const { GLTFLoader }   = await import('https://unpkg.com/three@0.165.0/examples/jsm/loaders/GLTFLoader.js');
+
+    // Hide the model-viewer fallback UI
+    document.getElementById('mv-wrapper').style.display='none';
+
+    /* ----- Minimal AR scene ----- */
+    const scene   = new Scene();
+    scene.background = new Color( 0x000000 );          // transparent on Android
+
+    const camera  = new PerspectiveCamera();
+    const renderer = new WebGLRenderer({ alpha:true, antialias:true });
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setPixelRatio( devicePixelRatio );
+    renderer.xr.enabled = true;
+    document.body.appendChild( renderer.domElement );
+
+    // Web-XR button (no vendor splash)
+    document.body.appendChild( ARButton.createButton( renderer, { requiredFeatures: [] } ) );
+
+    // Load the bear GLB
+    const loader = new GLTFLoader();
+    loader.load( '1968_Volkswagen_Beetle.usdz', gltf => {
+
+      const bear = gltf.scene;
+      bear.rotation.y = Math.PI; // face user
+
+      // Attach once session begins so no tap-to-place is required
+      renderer.xr.addEventListener( 'sessionstart', () => {
+        const cam = renderer.xr.getCamera( camera );
+        bear.position.set( 0, -0.25, -1 ); // x, y, z (1 m in front)
+        cam.add( bear );
+      });
+
+      renderer.setAnimationLoop( () => renderer.render( scene, camera ) );
+    });
+
+  } else {
+    /* ----- iOS / Desktop fallback: show model-viewer block ----- */
+    document.getElementById('mv-wrapper').style.display='block';
+  }
+</script>
+</body>
 </html>
