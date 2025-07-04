@@ -20,7 +20,6 @@
 </head>
 
 <body>
-<!-- ---------- iOS / Desktop fallback ---------- -->
 <div id="mv-wrapper">
   <model-viewer id="mv"
                 src="1968_Volkswagen_Beetle.glb"
@@ -32,57 +31,55 @@
   </model-viewer>
 </div>
 
-<!-- ---------- Android Web-XR path ---------- -->
 <script type="module">
-  // Test if the browser supports Web-XR immersive-AR
-  if (navigator.xr && await navigator.xr.isSessionSupported('immersive-ar')) {
+  // Need an async block to use await inside a <script type="module">
+  (async () => {
 
-    // dynamically import Three.js modules only when needed
-    const [{ PerspectiveCamera, Scene, WebGLRenderer, Color },
-           { ARButton }]   = await Promise.all([
-             import('https://unpkg.com/three@0.165.0/build/three.module.js'),
-             import('https://unpkg.com/three@0.165.0/examples/jsm/webxr/ARButton.js')
-           ]);
-    const { GLTFLoader }   = await import('https://unpkg.com/three@0.165.0/examples/jsm/loaders/GLTFLoader.js');
+    if (navigator.xr && await navigator.xr.isSessionSupported('immersive-ar')) {
 
-    // Hide the model-viewer fallback UI
-    document.getElementById('mv-wrapper').style.display='none';
+      const [{ PerspectiveCamera, Scene, WebGLRenderer, Color },
+             { ARButton }] = await Promise.all([
+               import('https://unpkg.com/three@0.165.0/build/three.module.js'),
+               import('https://unpkg.com/three@0.165.0/examples/jsm/webxr/ARButton.js')
+             ]);
+      const { GLTFLoader } = await import('https://unpkg.com/three@0.165.0/examples/jsm/loaders/GLTFLoader.js');
 
-    /* ----- Minimal AR scene ----- */
-    const scene   = new Scene();
-    scene.background = new Color( 0x000000 );          // transparent on Android
+      document.getElementById('mv-wrapper').style.display = 'none';
 
-    const camera  = new PerspectiveCamera();
-    const renderer = new WebGLRenderer({ alpha:true, antialias:true });
-    renderer.setSize( innerWidth, innerHeight );
-    renderer.setPixelRatio( devicePixelRatio );
-    renderer.xr.enabled = true;
-    document.body.appendChild( renderer.domElement );
+      const scene    = new Scene();
+      scene.background = new Color(0x000000);
 
-    // Web-XR button (no vendor splash)
-    document.body.appendChild( ARButton.createButton( renderer, { requiredFeatures: [] } ) );
+      const camera   = new PerspectiveCamera();
+      const renderer = new WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.setPixelRatio(devicePixelRatio);
+      renderer.xr.enabled = true;
+      document.body.appendChild(renderer.domElement);
 
-    // Load the bear GLB
-    const loader = new GLTFLoader();
-    loader.load( '1968_Volkswagen_Beetle.usdz', gltf => {
+      document.body.appendChild(
+        ARButton.createButton(renderer, { requiredFeatures: [] })
+      );
 
-      const bear = gltf.scene;
-      bear.rotation.y = Math.PI; // face user
+      const loader = new GLTFLoader();
+      loader.load('1968_Volkswagen_Beetle.glb', gltf => {
 
-      // Attach once session begins so no tap-to-place is required
-      renderer.xr.addEventListener( 'sessionstart', () => {
-        const cam = renderer.xr.getCamera( camera );
-        bear.position.set( 0, -0.25, -1 ); // x, y, z (1 m in front)
-        cam.add( bear );
+        const car = gltf.scene;
+        car.rotation.y = Math.PI;          // face user
+
+        renderer.xr.addEventListener('sessionstart', () => {
+          const cam = renderer.xr.getCamera(camera);
+          car.position.set(0, -0.3, -1.2); // 1.2 m straight ahead
+          cam.add(car);                    // instant placement
+        });
+
+        renderer.setAnimationLoop(() => renderer.render(scene, camera));
       });
 
-      renderer.setAnimationLoop( () => renderer.render( scene, camera ) );
-    });
+    } else {
+      document.getElementById('mv-wrapper').style.display = 'block';
+    }
 
-  } else {
-    /* ----- iOS / Desktop fallback: show model-viewer block ----- */
-    document.getElementById('mv-wrapper').style.display='block';
-  }
+  })();
 </script>
 </body>
 </html>
