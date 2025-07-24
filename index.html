@@ -33,12 +33,13 @@
   <model-viewer id="mv"
                 src="1968_Volkswagen_Beetle.glb"
                 ios-src="1968_Volkswagen_Beetle.usdz"
-                ar ar-modes="scene-viewer quick-look webxr"
+                ar ar-modes="scene-viewer quick-look webxr" ar-scale="fixed"
                 autoplay camera-controls="false" disable-tap
                 style="background:transparent;">
     <button slot="ar-button" class="ar-button">View in AR</button>
   </model-viewer>
 </div>
+
 
 <script type="module">
   // Need an async block to use await inside a <script type="module">
@@ -46,8 +47,9 @@
 
     if (navigator.xr && await navigator.xr.isSessionSupported('immersive-ar')) {
 
-      const [{ PerspectiveCamera, Scene, WebGLRenderer, Color },
-             { ARButton }] = await Promise.all([
+      const [{ PerspectiveCamera, Scene, WebGLRenderer, Color,
+              Raycaster, Vector2, Sprite, SpriteMaterial, CanvasTexture },
+              { ARButton }] = await Promise.all([
                import('https://unpkg.com/three@0.165.0/build/three.module.js'),
                import('https://unpkg.com/three@0.165.0/examples/jsm/webxr/ARButton.js')
              ]);
@@ -65,6 +67,44 @@
       renderer.xr.enabled = true;
       document.body.appendChild(renderer.domElement);
 
+      const raycaster = new Raycaster();
+      const pointer = new Vector2();
+      let openaiLink, googleLink;
+      const MODEL_SCALE = 10;
+
+      function createLinkSprite(label, url) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.font = '48px sans-serif';
+        const padding = 20;
+        const textWidth = ctx.measureText(label).width;
+        canvas.width = textWidth + padding * 2;
+        canvas.height = 64;
+        ctx.fillStyle = 'rgba(25,118,210,0.8)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, padding, canvas.height / 2);
+        const texture = new CanvasTexture(canvas);
+        const material = new SpriteMaterial({ map: texture, transparent: true });
+        const sprite = new Sprite(material);
+        sprite.scale.set(0.4, 0.1, 1);
+        sprite.userData.url = url;
+        return sprite;
+      }
+
+      renderer.domElement.addEventListener('click', e => {
+        if (!openaiLink || !googleLink) return;
+        pointer.x = (e.clientX / innerWidth) * 2 - 1;
+        pointer.y = -(e.clientY / innerHeight) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+        const intersects = raycaster.intersectObjects([openaiLink, googleLink]);
+        if (intersects.length > 0) {
+          const { url } = intersects[0].object.userData;
+          if (url) window.open(url, '_blank');
+        }
+      });
+
       document.body.appendChild(
         ARButton.createButton(renderer, { requiredFeatures: [] })
       );
@@ -73,22 +113,37 @@
       loader.load('1968_Volkswagen_Beetle.glb', gltf => {
 
         const car = gltf.scene;
-        car.rotation.y = Math.PI;          // face user
+        car.rotation.y = Math.PI;             // face user
+        car.scale.setScalar(MODEL_SCALE);     // 1000% size
 
-        renderer.xr.addEventListener('sessionstart', () => {
+        const attachToCamera = () => {
           const cam = renderer.xr.getCamera(camera);
-          car.position.set(0, -0.3, -1.2); // 1.2 m straight ahead
-          cam.add(car);                    // instant placement
-        });
+          car.position.set(0, -0.3, -1.2);
+          cam.add(car);
+          openaiLink = createLinkSprite('OpenAI', 'https://openai.com');
+          openaiLink.position.set(-0.3, 0.3, -1.0);
+          googleLink = createLinkSprite('Google', 'https://google.com');
+          googleLink.position.set(0.3, 0.3, -1.0);
+          cam.add(openaiLink);
+          cam.add(googleLink);
+        };
+
+        if (renderer.xr.getSession()) attachToCamera();
+        else renderer.xr.addEventListener('sessionstart', attachToCamera);
 
         renderer.setAnimationLoop(() => renderer.render(scene, camera));
       });
 
     } else {
       document.getElementById('mv-wrapper').style.display = 'block';
+      const mv = document.getElementById('mv');
+      mv.addEventListener('load', () => {
+        if (mv.model) mv.model.scale.setScalar(MODEL_SCALE);
+      });
     }
 
   })();
 </script>
+<p class="file-info">This static HTML page loads a 1968 Volkswagen Beetle model for augmented reality using either Three.js or Google's <code>model-viewer</code>. This paragraph is for testing purposes.</p>
 </body>
 </html>
