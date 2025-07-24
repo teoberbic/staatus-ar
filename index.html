@@ -16,6 +16,9 @@
     .ar-button{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
                padding:12px 24px;font:18px sans-serif;border-radius:8px;
                background:#1976d2;color:#fff;border:none}
+    .ar-link{position:fixed;top:12px;padding:6px 12px;font:14px sans-serif;
+             background:rgba(25,118,210,0.8);color:#fff;border-radius:4px;
+             text-decoration:none}
   </style>
   <!-- Google Tag Manager or Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-9WTBQ8BBK2"></script>
@@ -33,12 +36,15 @@
   <model-viewer id="mv"
                 src="1968_Volkswagen_Beetle.glb"
                 ios-src="1968_Volkswagen_Beetle.usdz"
-                ar ar-modes="scene-viewer quick-look webxr"
+                ar ar-modes="scene-viewer quick-look webxr" ar-scale="fixed"
                 autoplay camera-controls="false" disable-tap
                 style="background:transparent;">
     <button slot="ar-button" class="ar-button">View in AR</button>
   </model-viewer>
 </div>
+
+<a href="https://openai.com" target="_blank" class="ar-link" style="left:12px;">OpenAI</a>
+<a href="https://google.com" target="_blank" class="ar-link" style="left:90px;">Google</a>
 
 <script type="module">
   // Need an async block to use await inside a <script type="module">
@@ -74,6 +80,7 @@
 
         const car = gltf.scene;
         car.rotation.y = Math.PI;          // face user
+        car.scale.set(1, 1, 1);            // maximum size
 
         renderer.xr.addEventListener('sessionstart', () => {
           const cam = renderer.xr.getCamera(camera);
@@ -90,5 +97,6 @@
 
   })();
 </script>
+<p class="file-info">This static HTML page loads a 1968 Volkswagen Beetle model for augmented reality using either Three.js or Google's <code>model-viewer</code>. This paragraph is for testing purposes.</p>
 </body>
 </html>
